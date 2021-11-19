@@ -1,0 +1,180 @@
+IPaddress : 172.16.0.121
+
+Username : fai10104
+Password  :
+--------------------------------------------------------
+Connect to Hadoop to get the file :
+1. ssh fai10104@172.16.0.121
+2. pwd
+3. hadoop fs -ls /
+4. hadoop fs -ls /user/insofe/retail/data/aws
+5. exit
+6.scp fai10104@172.16.0.121:/home/fai10104/Data_sets/*.csv .
+----------------------------------------------------------
+///PYSPARK::::
+
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as f
+from pyspark.sql.types import StructType,StructField, StringType, IntegerType , BooleanType
+spark = SparkSession.builder.appName('pyspark - example read csv').getOrCreate()
+sc = spark.sparkContext
+ 
+//prints csv data
+
+to read:
+df = spark.read.csv("/home/fai10104/Data_sets/*.csv")
+df.printSchema()
+df.show()
+-------------------------------------------------------------
+
+//create schema of aisle:::
+
+schema_ais = StructType()\
+	.add("aisle_id",IntegerType(),False).add("aisle",StringType(),True)
+df_ais = spark.read.csv("/home/fai10104/Data_sets/aisles.csv",header=True,schema=schema_ais)
+df_ais.printSchema()
+df_ais.show()
+
+//dept:
+schema_dept = StructType()\
+	            .add("department_id",IntegerType(),False).add("department",StringType(),True)
+df_dept = spark.read.csv("/home/fai10104/Data_sets/departments.csv",header=True,schema=schema_dept)
+df_dept.printSchema()
+df_dept.show()
+
+//orders:
+schema_orders = StructType()\
+		.add("order_id",IntegerType(),False)\
+		.add("user_id",IntegerType(),True)\
+		.add("eval_set",StringType(),True)\
+		.add("order_number",IntegerType(),True)\
+		.add("order_dow",IntegerType(),True)\
+		.add("order_hour_of_day",IntegerType(),True)\
+		.add("days_since_prior_order",IntegerType(),True)
+df_order = spark.read.csv("/home/fai10104/Data_sets/orders.csv",header=True,schema=schema_orders)
+df_order.printSchema()
+df_order.show()
+
+//Product:
+schema_pdt = StructType()\
+		.add("product_id",IntegerType(),False)\
+		.add("product_name",StringType(),True)\
+		.add("aisle_id",IntegerType(),True)\
+		.add("department_id",IntegerType(),True)
+df_pdt = spark.read.csv("/home/fai10104/Data_sets/products.csv",header=True,schema=schema_pdt)
+df_pdt.printSchema()
+df_pdt.show()
+
+//prior-order:
+schema_prior_order = StructType()\
+		      	.add("order_id",IntegerType(),True)\
+		     	.add("product_id",IntegerType(),True)\
+		      	.add("add_to_cart_order",IntegerType(),True)\
+		      	.add("reordered",IntegerType(),True)
+df_po = spark.read.csv("/home/fai10104/Data_sets/prior_order.csv",header=True,schema=schema_prior_order)
+df_po.printSchema()
+df_po.show()
+
+ //train_order
+
+schema_train_order = StructType()\
+			.add("order_id",IntegerType(),True)\
+			.add("product_id",IntegerType(),True)\
+			.add("add_to_cart_order",IntegerType(),True)\
+			.add("reordered",IntegerType(),True)
+df_to = spark.read.csv("/home/fai10104/Data_sets/train_order.csv",header=True,schema=schema_train_order)
+df_to.printSchema()
+df_to.show()
+--------------------------
+//display columns:
+
+print(df_ais.columns)
+print(df_dept.columns)
+print(df_pdt.columns)
+print(df_order.columns)
+print(df_po.columns)
+print(df_to.columns)
+
+//display datatypes:
+
+for col in df_ais.dtypes:
+    print(col[0]+" , "+col[1])
+for col in df_dept.dtypes:
+    print(col[0]+" , "+col[1])
+for col in df_pdt.dtypes:
+    print(col[0]+" , "+col[1])
+for col in df_order.dtypes:
+    print(col[0]+" , "+col[1])
+for col in df_po.dtypes:
+    print(col[0]+" , "+col[1])
+for col in df_to.dtypes:
+    print(col[0]+" , "+col[1])
+
+--------------------------------
+//null values checking:::
+
+df_order.filter(df_order.order_id.isNull() | df_order.user_id.isNull() | df_order.eval_set.isNull() | df_order.order_number.isNull() | df_order.order_dow.isNull() | df_order.order_hour_of_day.isNull() | df_order.days_since_prior_order.isNull()).show()
+df_order.select([count(when(col(c).isNull() , c)).alias(c) for c in df_order.columns]
+   ).show()
+
+df_dept.filter(df_dept.department_id.isNull() | df_dept.department.isNull()).show()
+df_dept.select([count(when(col(c).isNull() , c)).alias(c) for c in df_dept.columns]
+   ).show()
+
+df_ais.filter(df_ais.aisle_id.isNull() | df_ais.aisle.isNull()).show()
+df_ais.select([count(when(col(c).isNull() , c)).alias(c) for c in df_ais.columns]
+   ).show()
+
+df_pdt.filter(df_pdt.product_id.isNull() | df_pdt.product_name.isNull() | df_pdt.aisle_id.isNull() | df_pdt.department_id.isNull()).show()
+df_pdt.select([count(when(col(c).isNull() , c)).alias(c) for c in df_pdt.columns]
+   ).show()
+
+df_po.filter(df_po.order_id.isNull() | df_po.product_id.isNull() | df_po.add_to_cart_order.isNull() | df_po.reordered.isNull()).show()
+df_po.select([count(when(col(c).isNull() , c)).alias(c) for c in df_po.columns]
+   ).show()
+
+df_to.filter(df_to.order_id.isNull() | df_to.product_id.isNull() | df_to.add_to_cart_order.isNull() | df_to.reordered.isNull()).show()
+df_to.select([count(when(col(c).isNull() , c)).alias(c) for c in df_to.columns]
+   ).show()
+---------------------------------------------------------------------------------------
+//MERGING:::
+
+//pdt+ais = pa_lj:::
+
+pa_lj = df_pdt.join(df_ais,["aisle_id"], "left")
+pa_lj.show()
+------------------------------------------------------------------
+//pa_lj + dept = pad_lj::: 
+
+pad_lj = pa_lj.join(df_dept,["department_id"], "left")
+pad_lj.show()
+------------------------------------------------------------------
+//po+pad_lj :: pop_ij ; to+pad_lj :: top_ij
+
+pop_ij = df_po.join(pad_lj,["product_id"], "inner")
+------------------------------------------------------------------
+top_ij = df_to.join(pad_lj,["product_id"], "inner")
+------------------------------------------------------------------
+//order+ po = orpo_lj ; order+ to = orto_lj::
+
+orpo_lj = df_order.join(df_po,["order_id"], "left")
+po_merged = orpo_lj.filter(orpo_lj.eval_set == "prior")
+------------------------------------------------------------------
+//orto_lj = df_order.join(df_to,["order_id"], "left")
+
+to_merged = orto_lj.filter(orto_lj.eval_set == "train")
+orto_lj.show()
+----------------------------------------------------------------------------------------------------------
+//UNION::
+temp_merge = po_merged.union(to_merged)
+
+final_merge = temp_merge.join(pad_lj,["product_id"], "left")
+------------------------------------------------------------------------------------------------------------
+
+//Export dataframes to CSV::: 
+
+final_merge.coalesce(1).write.option("header",True).csv("/home/fai10104/project/Final_output")
+---------------------------------------------------------------------------------------------------------------
+//loading csv to HDFS
+
+scp fai10104@172.16.0.121:/home/fai10104/project/Final_output/*.csv .
